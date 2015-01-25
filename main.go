@@ -39,7 +39,7 @@ type Session struct {
 	Stream *Stream
 	Node   *core.IpfsNode
 
-	lastTimestamp time.Time
+	lastTimestamp int64
 }
 
 func InitNode() (*core.IpfsNode, error) {
@@ -191,8 +191,21 @@ func mergedStream(session *Session) (*Stream, error) {
 	return mergedStream, nil
 }
 
-func outputStream(stream *Stream) error {
-	log.Print(stream)
+func (m *Message) ChatString() string {
+	return fmt.Sprintf("[%s] <%s> %s",
+		time.Unix(m.GetTimestamp() / 1e9, 0),
+		m.GetName(),
+		m.GetMessage())
+}
+
+func outputStream(session *Session, stream *Stream) error {
+	for _, message := range stream.GetMessage() {
+		if message.GetTimestamp() >= session.lastTimestamp {
+			log.Print(message.ChatString())
+			session.lastTimestamp = message.GetTimestamp()
+		}
+	}
+
 	return nil
 }
 
@@ -238,7 +251,7 @@ func main() {
 				continue
 			}
 
-			err = outputStream(stream)
+			err = outputStream(session, stream)
 			if err != nil {
 				log.Print(err)
 				continue
