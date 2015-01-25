@@ -7,6 +7,7 @@ import (
 
 	"code.google.com/p/go.net/context"
 
+	base58 "github.com/jbenet/go-base58"
 	"github.com/jbenet/go-ipfs/core"
 
 	"crypto/sha256"
@@ -20,6 +21,10 @@ import (
 
 	"github.com/jbenet/go-ipfs/repo/fsrepo"
 )
+
+type Session struct {
+	messages []string
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -45,15 +50,27 @@ func run() error {
 		return err
 	}
 
+	hash := sha256.New()
+	hash.Write([]byte("/ipfs-chat/"))
+	hash.Write([]byte(node.Identity))
+
+	hashValue := hash.Sum(nil)
+
+	mbuf, err := multihash.Encode(hashValue, multihash.SHA2_256)
+	if err != nil {
+		return err
+	}
+
+	hashString := base58.Encode(mbuf)
+
+	// connect to peers
+
 	peers := node.PeerHost.Network().Peers()
 	for len(peers) < 1 {
 		peers = node.PeerHost.Network().Peers()
 		log.Println(peers)
 		time.Sleep(1 * time.Second)
 	}
-
-	hash := sha256.NewHash()
-	hash.Sum(node.Identity)
 
 	// TODO: take in list of Peer.ID keys to listen on
 
