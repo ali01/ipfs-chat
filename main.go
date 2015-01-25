@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"code.google.com/p/go.net/context"
@@ -37,6 +38,8 @@ type Session struct {
 
 	Stream *Stream
 	Node   *core.IpfsNode
+
+	lastTimestamp time.Time
 }
 
 func InitNode() (*core.IpfsNode, error) {
@@ -92,11 +95,6 @@ func InitSession(node *core.IpfsNode, name string,
 
 	PublishSession(session)
 
-	// value, err := dht.GetValue(context.Background(), "test key")
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	return session, nil
 }
 
@@ -144,16 +142,57 @@ func waitForPeers(node *core.IpfsNode) {
 	log.Println("Connected.")
 }
 
-func mergeStreams(streams []*Stream) *Stream {
+func mergeStreams(streamChanIn <-chan *Stream, streamChanOut chan<- *Stream) {
 	out := &Stream{}
 
-	for _, stream := range streams {
+	for stream := range streamChanIn {
 		out.Message = append(out.Message, stream.Message...)
 	}
 
 	sort.Sort(out)
+	streamChanOut <- out
+}
 
-	return out
+func mergedStream(session *Session) (*Stream, error) {
+	streamChanIn := make(chan *Stream, 16)
+	streamChanOut := make(chan *Stream)
+	dht := session.Node.Routing
+
+	var wg sync.WaitGroup
+	for _, subscribeId := range session.SubscribeIds {
+		wg.Add(1)
+		go func(subscribeId ChatId) {
+			value, err := dht.GetValue(context.Background(), u.Key(subscribeId))
+			if err != nil {
+				log.Print(err)
+				return
+			}
+
+			stream := &Stream{}
+			err = proto.Unmarshal(value, stream)
+			if err != nil {
+				log.Print(err)
+				return
+			}
+
+			streamChanIn <- stream
+
+			wg.Done()
+		}(subscribeId)
+	}
+
+	go mergeStreams(streamChanIn, streamChanOut)
+
+	wg.Wait()
+	close(streamChanIn)
+	mergedStream := <-streamChanOut
+
+	return mergedStream, nil
+}
+
+func outputStream(stream *Stream) error {
+	log.Print(stream)
+	return nil
 }
 
 // Stream sort interface
@@ -189,11 +228,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, subscribeId := range session.SubscribeIds {
-		go func(subscribeId ChatId) {
+	go func() {
+		for {
+			stream, err := mergedStream(session)
+			if err != nil {
+				log.Print(err)
+				continue
+			}
 
-		}(subscribeId)
-	}
+			err = outputStream(stream)
+			if err != nil {
+				log.Print(err)
+				continue
+			}
+		}
+	}()
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
