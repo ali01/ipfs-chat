@@ -10,6 +10,8 @@ It is generated from these files:
 
 It has these top-level messages:
 	Message
+	Stream
+	Channel
 */
 package main
 
@@ -41,6 +43,65 @@ func (m *Message) GetTimestamp() int64 {
 func (m *Message) GetMessage() string {
 	if m != nil && m.Message != nil {
 		return *m.Message
+	}
+	return ""
+}
+
+// Messages published by a peer.
+type Stream struct {
+	Message          []*Message `protobuf:"bytes,1,rep,name=message" json:"message,omitempty"`
+	XXX_unrecognized []byte     `json:"-"`
+}
+
+func (m *Stream) Reset()         { *m = Stream{} }
+func (m *Stream) String() string { return proto.CompactTextString(m) }
+func (*Stream) ProtoMessage()    {}
+
+func (m *Stream) GetMessage() []*Message {
+	if m != nil {
+		return m.Message
+	}
+	return nil
+}
+
+type Channel struct {
+	Peer             []*Channel_Peer `protobuf:"bytes,1,rep,name=peer" json:"peer,omitempty"`
+	XXX_unrecognized []byte          `json:"-"`
+}
+
+func (m *Channel) Reset()         { *m = Channel{} }
+func (m *Channel) String() string { return proto.CompactTextString(m) }
+func (*Channel) ProtoMessage()    {}
+
+func (m *Channel) GetPeer() []*Channel_Peer {
+	if m != nil {
+		return m.Peer
+	}
+	return nil
+}
+
+type Channel_Peer struct {
+	// Human-readable name.
+	Name *string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	// Base58-encoded multihash.
+	Id               *string `protobuf:"bytes,2,opt,name=id" json:"id,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *Channel_Peer) Reset()         { *m = Channel_Peer{} }
+func (m *Channel_Peer) String() string { return proto.CompactTextString(m) }
+func (*Channel_Peer) ProtoMessage()    {}
+
+func (m *Channel_Peer) GetName() string {
+	if m != nil && m.Name != nil {
+		return *m.Name
+	}
+	return ""
+}
+
+func (m *Channel_Peer) GetId() string {
+	if m != nil && m.Id != nil {
+		return *m.Id
 	}
 	return ""
 }

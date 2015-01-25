@@ -5,3 +5,19 @@ message Message {
   optional int64 timestamp = 1;
   optional string message = 2;
 }
+
+// Messages published by a peer.
+message Stream {
+  repeated Message message = 1;
+}
+
+message Channel {
+  message Peer {
+    // Human-readable name.
+    optional string name = 1;
+    // Base58-encoded multihash.
+    optional string id = 2;
+  }
+
+  repeated Peer peer = 1;
+}
