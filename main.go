@@ -95,11 +95,6 @@ func InitSession(node *core.IpfsNode, name string,
 
 	waitForPeers(session.Node)
 
-	err = PublishSession(session)
-	if err != nil {
-		log.Print("Initial PublishSession failed: ", err)
-	}
-
 	return session, nil
 }
 
