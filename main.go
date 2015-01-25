@@ -93,7 +93,10 @@ func InitSession(node *core.IpfsNode, name string,
 
 	waitForPeers(session.Node)
 
-	PublishSession(session)
+	err = PublishSession(session)
+	if err != nil {
+		log.Print("Initial PublishSession failed: ", err)
+	}
 
 	return session, nil
 }
@@ -105,6 +108,7 @@ func PublishSession(session *Session) error {
 	}
 
 	dht := session.Node.Routing
+	log.Print("PutValue on ", u.Key(session.PublishId))
 	err = dht.PutValue(context.Background(), u.Key(session.PublishId), streamBytes)
 	if err != nil {
 		return err
@@ -162,9 +166,10 @@ func mergedStream(session *Session) (*Stream, error) {
 	for _, subscribeId := range session.SubscribeIds {
 		wg.Add(1)
 		go func(subscribeId ChatId) {
+			log.Print("GetValue on ", u.Key(subscribeId))
 			value, err := dht.GetValue(context.Background(), u.Key(subscribeId))
 			if err != nil {
-				log.Print(err)
+				log.Print("dht.GetValue failed: ", err)
 				return
 			}
 
@@ -221,8 +226,8 @@ func main() {
 	}
 
 	// initialize session
-	name := "alive"
-	peers := []peer.ID{"QmWWH49ZaWHc8wG9cPUGsnzRbUeNgJpus2aQT4Kou2oz7b"}
+	name := "ms"
+	peers := []peer.ID{"QmdXyf53G1b6xesETxsD2qCySRXcwn9znuG7RxmuYtZaCx"}
 	session, err := InitSession(node, name, peers)
 	if err != nil {
 		log.Fatal(err)
@@ -262,7 +267,10 @@ func main() {
 
 		session.Stream.Message = append(session.Stream.Message, message)
 
-		PublishSession(session)
+		err = PublishSession(session)
+		if err != nil {
+			log.Print("PublishSession failed:", err)
+		}
 	}
 
 	// Publish Data, get Data, and interleave
