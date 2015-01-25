@@ -4,6 +4,8 @@ message Message {
   // Microseconds since epoch.
   optional int64 timestamp = 1;
   optional string message = 2;
+  optional string peerId = 3;
+  optional string name = 4; // name of the sender
 }
 
 // Messages published by a peer.

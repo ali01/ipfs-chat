@@ -15,7 +15,7 @@ It has these top-level messages:
 */
 package main
 
-import proto "code.google.com/p/gogoprotobuf/proto"
+import proto "github.com/gogo/protobuf/proto"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -26,6 +26,8 @@ type Message struct {
 	// Microseconds since epoch.
 	Timestamp        *int64  `protobuf:"varint,1,opt,name=timestamp" json:"timestamp,omitempty"`
 	Message          *string `protobuf:"bytes,2,opt,name=message" json:"message,omitempty"`
+	PeerId           *string `protobuf:"bytes,3,opt,name=peerId" json:"peerId,omitempty"`
+	Name             *string `protobuf:"bytes,4,opt,name=name" json:"name,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -43,6 +45,20 @@ func (m *Message) GetTimestamp() int64 {
 func (m *Message) GetMessage() string {
 	if m != nil && m.Message != nil {
 		return *m.Message
+	}
+	return ""
+}
+
+func (m *Message) GetPeerId() string {
+	if m != nil && m.PeerId != nil {
+		return *m.PeerId
+	}
+	return ""
+}
+
+func (m *Message) GetName() string {
+	if m != nil && m.Name != nil {
+		return *m.Name
 	}
 	return ""
 }

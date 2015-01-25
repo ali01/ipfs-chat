@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	_ "errors"
+	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"code.google.com/p/go.net/context"
@@ -18,6 +21,7 @@ import (
 
 	// "github.com/jbenet/go-ipfs/routing/dht"
 
+	"github.com/jbenet/go-ipfs/Godeps/_workspace/src/github.com/jbenet/go-logging"
 	"github.com/jbenet/go-ipfs/p2p/peer"
 	"github.com/jbenet/go-ipfs/repo/fsrepo"
 	u "github.com/jbenet/go-ipfs/util"
@@ -26,14 +30,16 @@ import (
 type ChatId string
 
 type Session struct {
-	PublishId      ChatId
-	SubscribeIds   []ChatId
-	MessageHistory []Message
+	Name         string
+	PublishId    ChatId
+	SubscribeIds []ChatId
+
+	Stream *Stream
+	Node   *core.IpfsNode
 }
 
 func InitNode() (*core.IpfsNode, error) {
 	ipfsPath, err := fsrepo.BestKnownPath()
-	log.Println(ipfsPath)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +49,7 @@ func InitNode() (*core.IpfsNode, error) {
 		return nil, err
 	}
 
+	u.SetAllLoggers(logging.CRITICAL)
 	node, err := core.NewIPFSNode(context.Background(), core.Online(repo))
 	if err != nil {
 		return nil, err
@@ -51,7 +58,11 @@ func InitNode() (*core.IpfsNode, error) {
 	return node, nil
 }
 
-func InitSession(node *core.IpfsNode, subscribePeers []peer.ID) (*Session, error) {
+func InitSession(node *core.IpfsNode, name string,
+	subscribePeers []peer.ID) (*Session, error) {
+
+	log.Printf("Initializing Session with Peer ID: %s", node.Identity.Pretty())
+
 	publishIdString, err := deriveChatId(node.Identity)
 	if err != nil {
 		return nil, err
@@ -68,33 +79,17 @@ func InitSession(node *core.IpfsNode, subscribePeers []peer.ID) (*Session, error
 	}
 
 	session := &Session{
+		Name:         name,
 		PublishId:    publishIdString,
 		SubscribeIds: subscribeIds,
+
+		Stream: &Stream{},
+		Node:   node,
 	}
 
-	log.Println("Connecting to peers...")
+	waitForPeers(session.Node)
 
-	peers := node.PeerHost.Network().Peers()
-	for len(peers) < 1 {
-		peers = node.PeerHost.Network().Peers()
-		time.Sleep(1 * time.Second)
-	}
-
-	log.Println("Connected.")
-
-	// publish stream
-
-	stream := &Stream{}
-	streamBytes, err := proto.Marshal(stream)
-	if err != nil {
-		return nil, err
-	}
-
-	dht := node.Routing
-	err = dht.PutValue(context.Background(), u.Key(session.PublishId), streamBytes)
-	if err != nil {
-		return nil, err
-	}
+	PublishSession(session)
 
 	// value, err := dht.GetValue(context.Background(), "test key")
 	// if err != nil {
@@ -102,6 +97,21 @@ func InitSession(node *core.IpfsNode, subscribePeers []peer.ID) (*Session, error
 	// }
 
 	return session, nil
+}
+
+func PublishSession(session *Session) error {
+	streamBytes, err := proto.Marshal(session.Stream)
+	if err != nil {
+		return err
+	}
+
+	dht := session.Node.Routing
+	err = dht.PutValue(context.Background(), u.Key(session.PublishId), streamBytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func deriveChatId(peerId peer.ID) (ChatId, error) {
@@ -121,6 +131,18 @@ func deriveChatId(peerId peer.ID) (ChatId, error) {
 	return chatIdString, nil
 }
 
+func waitForPeers(node *core.IpfsNode) {
+	log.Println("Connecting to peers...")
+
+	peers := node.PeerHost.Network().Peers()
+	for len(peers) < 1 {
+		peers = node.PeerHost.Network().Peers()
+		time.Sleep(1 * time.Second)
+	}
+
+	log.Println("Connected.")
+}
+
 func main() {
 	// initialize IPFS Node
 	node, err := InitNode()
@@ -129,17 +151,40 @@ func main() {
 	}
 
 	// initialize session
+	name := "alive"
 	peers := []peer.ID{"QmWWH49ZaWHc8wG9cPUGsnzRbUeNgJpus2aQT4Kou2oz7b"}
-	_, err = InitSession(node, peers)
+	session, err := InitSession(node, name, peers)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// TODO: take in list of Peer.ID keys to listen on
+	for _, subscribeId := range session.SubscribeIds {
+		go func(subscribeId ChatId) {
 
-	// TODO: derive DHT key to publish on from Chat-Prefix + Peer.ID
+		}(subscribeId)
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Print("> ")
+
+		msgString, err := reader.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		message := &Message{
+			Message:   proto.String(msgString),
+			Timestamp: proto.Int64(time.Now().UnixNano()),
+			PeerId:    proto.String(node.Identity.Pretty()),
+			Name:      proto.String(session.Name),
+		}
+
+		session.Stream.Message = append(session.Stream.Message, message)
+
+		PublishSession(session)
+	}
 
 	// Publish Data, get Data, and interleave
 
-	// log.Println(string(value))
 }
