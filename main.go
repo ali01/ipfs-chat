@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"code.google.com/p/go.net/context"
+	"github.com/gogo/protobuf/proto"
 
 	base58 "github.com/jbenet/go-base58"
 	"github.com/jbenet/go-ipfs/core"
@@ -18,8 +19,8 @@ import (
 	// "github.com/jbenet/go-ipfs/routing/dht"
 
 	"github.com/jbenet/go-ipfs/p2p/peer"
-
 	"github.com/jbenet/go-ipfs/repo/fsrepo"
+	u "github.com/jbenet/go-ipfs/util"
 )
 
 type ChatId string
@@ -28,11 +29,6 @@ type Session struct {
 	PublishId      ChatId
 	SubscribeIds   []ChatId
 	MessageHistory []Message
-}
-
-type Message struct {
-	Message   string
-	Timestamp time.Time
 }
 
 func InitNode() (*core.IpfsNode, error) {
@@ -86,6 +82,25 @@ func InitSession(node *core.IpfsNode, subscribePeers []peer.ID) (*Session, error
 
 	log.Println("Connected.")
 
+	// publish stream
+
+	stream := &Stream{}
+	streamBytes, err := proto.Marshal(stream)
+	if err != nil {
+		return nil, err
+	}
+
+	dht := node.Routing
+	err = dht.PutValue(context.Background(), u.Key(session.PublishId), streamBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// value, err := dht.GetValue(context.Background(), "test key")
+	// if err != nil {
+	// 	return nil, err
+	// }
+
 	return session, nil
 }
 
@@ -125,17 +140,6 @@ func main() {
 	// TODO: derive DHT key to publish on from Chat-Prefix + Peer.ID
 
 	// Publish Data, get Data, and interleave
-
-	// dht := node.Routing
-	// err = dht.PutValue(context.Background(), "test key", []byte("test value"))
-	// if err != nil {
-	// 	return err
-	// }
-
-	// value, err := dht.GetValue(context.Background(), "test key")
-	// if err != nil {
-	// 	return err
-	// }
 
 	// log.Println(string(value))
 }
