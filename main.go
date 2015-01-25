@@ -169,7 +169,7 @@ func mergedStream(session *Session) (*Stream, error) {
 		wg.Add(1)
 		go func(subscribeId ChatId) {
 			log.Print("GetValue on ", u.Key(subscribeId))
-			value, err := dht.GetValue(context.Background(), u.Key(subscribeId))
+			value, err := dht.GetValue(context.Background(), string(u.Key(subscribeId)))
 			if err != nil {
 				log.Print("dht.GetValue failed: ", err)
 				return
