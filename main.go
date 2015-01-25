@@ -109,10 +109,16 @@ func deriveChatId(peerId peer.ID) (ChatId, error) {
 func main() {
 	// initialize IPFS Node
 	node, err := InitNode()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// initialize session
 	peers := []peer.ID{"QmWWH49ZaWHc8wG9cPUGsnzRbUeNgJpus2aQT4Kou2oz7b"}
 	_, err = InitSession(node, peers)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// TODO: take in list of Peer.ID keys to listen on
 
@@ -132,8 +138,4 @@ func main() {
 	// }
 
 	// log.Println(string(value))
-
-	if err != nil {
-		log.Fatal(err)
-	}
 }
