@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"time"
 
 	"code.google.com/p/go.net/context"
@@ -142,6 +143,36 @@ func waitForPeers(node *core.IpfsNode) {
 
 	log.Println("Connected.")
 }
+
+func mergeStreams(streams []*Stream) *Stream {
+	out := &Stream{}
+
+	for _, stream := range streams {
+		out.Message = append(out.Message, stream.Message...)
+	}
+
+	sort.Sort(out)
+
+	return out
+}
+
+// Stream sort interface
+
+func (s *Stream) Len() int {
+	return len(s.GetMessage())
+}
+
+func (s *Stream) Less(i, j int) bool {
+	messages := s.GetMessage()
+	return messages[i].GetTimestamp() < messages[j].GetTimestamp()
+}
+
+func (s *Stream) Swap(i, j int) {
+	messages := s.GetMessage()
+	messages[i], messages[j] = messages[j], messages[i]
+}
+
+//
 
 func main() {
 	// initialize IPFS Node
