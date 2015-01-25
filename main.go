@@ -105,7 +105,6 @@ func PublishSession(session *Session) error {
 	}
 
 	dht := session.Node.Routing
-	log.Print("PutValue on ", string(u.Key(session.PublishId)))
 	err = dht.PutValue(context.Background(), u.Key(session.PublishId), streamBytes)
 	if err != nil {
 		return err
@@ -200,7 +199,7 @@ func (m *Message) ChatString() string {
 func outputStream(session *Session, stream *Stream) error {
 	for _, message := range stream.GetMessage() {
 		if message.GetTimestamp() > session.lastTimestamp {
-			fmt.Println(message.ChatString())
+			fmt.Println("\r" + message.ChatString())
 			session.lastTimestamp = message.GetTimestamp()
 		}
 	}
