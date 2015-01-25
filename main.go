@@ -17,14 +17,17 @@ import (
 
 	// "github.com/jbenet/go-ipfs/routing/dht"
 
-	// "github.com/jbenet/go-ipfs/p2p/host"
+	"github.com/jbenet/go-ipfs/p2p/peer"
 
 	"github.com/jbenet/go-ipfs/repo/fsrepo"
 )
 
+type ChatId string
+
 type Session struct {
-	ChatId   string
-	Messages []Message
+	PublishId      ChatId
+	SubscribeIds   []ChatId
+	MessageHistory []Message
 }
 
 type Message struct {
@@ -32,7 +35,7 @@ type Message struct {
 	Timestamp time.Time
 }
 
-func initNode() (*IpfsNode, error) {
+func InitNode() (*core.IpfsNode, error) {
 	ipfsPath, err := fsrepo.BestKnownPath()
 	log.Println(ipfsPath)
 	if err != nil {
@@ -52,23 +55,25 @@ func initNode() (*IpfsNode, error) {
 	return node, nil
 }
 
-func initSession(node *IpfsNode) (*Session, error) {
-	hasher := sha256.New()
-	hasher.Write([]byte("/ipfs-chat/"))
-	hasher.Write([]byte(node.Identity))
-
-	publishId := hasher.Sum(nil)
-
-	mbuf, err := multihash.Encode(publishId, multihash.SHA2_256)
+func InitSession(node *core.IpfsNode, subscribePeers []peer.ID) (*Session, error) {
+	publishIdString, err := deriveChatId(node.Identity)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	publishIdString := base58.Encode(mbuf)
+	var subscribeIds []ChatId
+	for _, peerId := range subscribePeers {
+		chatId, err := deriveChatId(peerId)
+		if err != nil {
+			return nil, err
+		}
+
+		subscribeIds = append(subscribeIds, chatId)
+	}
 
 	session := &Session{
-		PublishId: publishIdString,
-		Messages:  make([]Message),
+		PublishId:    publishIdString,
+		SubscribeIds: subscribeIds,
 	}
 
 	log.Println("Connecting to peers...")
@@ -81,12 +86,33 @@ func initSession(node *IpfsNode) (*Session, error) {
 
 	log.Println("Connected.")
 
-	return session
+	return session, nil
+}
+
+func deriveChatId(peerId peer.ID) (ChatId, error) {
+	hasher := sha256.New()
+	hasher.Write([]byte("/ipfs-chat/"))
+	hasher.Write([]byte(peerId))
+
+	chatId := hasher.Sum(nil)
+
+	mbuf, err := multihash.Encode(chatId, multihash.SHA2_256)
+	if err != nil {
+		return ChatId(0), err
+	}
+
+	chatIdString := ChatId(base58.Encode(mbuf))
+
+	return chatIdString, nil
 }
 
 func main() {
-	node, err := initNode()
-	session, err := initSession(node)
+	// initialize IPFS Node
+	node, err := InitNode()
+
+	// initialize session
+	peers := []peer.ID{"QmWWH49ZaWHc8wG9cPUGsnzRbUeNgJpus2aQT4Kou2oz7b"}
+	_, err = InitSession(node, peers)
 
 	// TODO: take in list of Peer.ID keys to listen on
 
