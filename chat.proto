@@ -1,0 +1,7 @@
+package main;
+
+message Message {
+  // Microseconds since epoch.
+  optional int64 timestamp = 1;
+  optional string message = 2;
+}
