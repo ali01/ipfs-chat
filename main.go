@@ -166,7 +166,7 @@ func mergedStream(session *Session) (*Stream, error) {
 			defer wg.Done()
 			value, err := dht.GetValue(context.Background(), u.Key(subscribeId))
 			if err != nil {
-				log.Print("dht.GetValue failed: ", err)
+				//log.Print("dht.GetValue failed: ", err)
 				return
 			}
 
@@ -200,7 +200,7 @@ func (m *Message) ChatString() string {
 func outputStream(session *Session, stream *Stream) error {
 	for _, message := range stream.GetMessage() {
 		if message.GetTimestamp() > session.lastTimestamp {
-			log.Print(message.ChatString())
+			fmt.Println(message.ChatString())
 			session.lastTimestamp = message.GetTimestamp()
 		}
 	}
