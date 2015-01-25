@@ -68,12 +68,14 @@ func InitSession(node *core.IpfsNode, name string,
 	log.Printf("Initializing Session with Peer ID: %s", node.Identity.Pretty())
 
 	publishIdString, err := deriveChatId(node.Identity)
+	log.Print("Our DHT key: ", publishIdString)
 	if err != nil {
 		return nil, err
 	}
 
 	var subscribeIds []ChatId
 	for _, peerId := range subscribePeers {
+		log.Print("Subscribing to ", peerId.Pretty())
 		chatId, err := deriveChatId(peerId)
 		if err != nil {
 			return nil, err
@@ -108,7 +110,7 @@ func PublishSession(session *Session) error {
 	}
 
 	dht := session.Node.Routing
-	log.Print("PutValue on ", u.Key(session.PublishId))
+	log.Print("PutValue on ", string(u.Key(session.PublishId)))
 	err = dht.PutValue(context.Background(), u.Key(session.PublishId), streamBytes)
 	if err != nil {
 		return err
@@ -172,6 +174,7 @@ func mergedStream(session *Session) (*Stream, error) {
 				log.Print("dht.GetValue failed: ", err)
 				return
 			}
+			log.Print("GetValue returned ", value)
 
 			stream := &Stream{}
 			err = proto.Unmarshal(value, stream)
@@ -227,7 +230,8 @@ func main() {
 
 	// initialize session
 	name := os.Args[1]
-	peers := []peer.ID{peer.ID(os.Args[2])}
+	peers := []peer.ID{peer.ID(base58.Decode(os.Args[2]))}
+	log.Print("Peers: ", peers)
 	session, err := InitSession(node, name, peers)
 	if err != nil {
 		log.Fatal(err)
@@ -246,6 +250,8 @@ func main() {
 				log.Print(err)
 				continue
 			}
+
+			time.Sleep(1 * time.Second)
 		}
 	}()
 
