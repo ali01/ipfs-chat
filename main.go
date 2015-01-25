@@ -174,7 +174,6 @@ func mergedStream(session *Session) (*Stream, error) {
 				log.Print("dht.GetValue failed: ", err)
 				return
 			}
-			log.Print("GetValue returned ", value)
 
 			stream := &Stream{}
 			err = proto.Unmarshal(value, stream)
