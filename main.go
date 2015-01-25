@@ -62,6 +62,7 @@ func run() error {
 	}
 
 	hashString := base58.Encode(mbuf)
+	log.Println(hashString)
 
 	// connect to peers
 
