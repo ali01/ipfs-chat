@@ -23,55 +23,70 @@ import (
 )
 
 type Session struct {
-	messages []string
+	ChatId   string
+	Messages []Message
 }
 
-func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
-	}
+type Message struct {
+	Message   string
+	Timestamp time.Time
 }
 
-func run() error {
-
+func initNode() (*IpfsNode, error) {
 	ipfsPath, err := fsrepo.BestKnownPath()
 	log.Println(ipfsPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	repo := fsrepo.At(ipfsPath)
 	if err := repo.Open(); err != nil {
-		return err
+		return nil, err
 	}
 
 	node, err := core.NewIPFSNode(context.Background(), core.Online(repo))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	hash := sha256.New()
-	hash.Write([]byte("/ipfs-chat/"))
-	hash.Write([]byte(node.Identity))
+	return node, nil
+}
 
-	hashValue := hash.Sum(nil)
+func initSession(node *IpfsNode) (*Session, error) {
+	hasher := sha256.New()
+	hasher.Write([]byte("/ipfs-chat/"))
+	hasher.Write([]byte(node.Identity))
 
-	mbuf, err := multihash.Encode(hashValue, multihash.SHA2_256)
+	publishId := hasher.Sum(nil)
+
+	mbuf, err := multihash.Encode(publishId, multihash.SHA2_256)
 	if err != nil {
 		return err
 	}
 
-	hashString := base58.Encode(mbuf)
-	log.Println(hashString)
+	publishIdString := base58.Encode(mbuf)
 
-	// connect to peers
+	session := &Session{
+		PublishId: publishIdString,
+		Messages:  make([]Message),
+	}
+
+	log.Println("Connecting to peers...")
 
 	peers := node.PeerHost.Network().Peers()
 	for len(peers) < 1 {
 		peers = node.PeerHost.Network().Peers()
-		log.Println(peers)
 		time.Sleep(1 * time.Second)
 	}
+
+	log.Println("Connected.")
+
+	return session
+}
+
+func main() {
+	node, err := initNode()
+	session, err := initSession(node)
 
 	// TODO: take in list of Peer.ID keys to listen on
 
@@ -92,5 +107,7 @@ func run() error {
 
 	// log.Println(string(value))
 
-	return nil
+	if err != nil {
+		log.Fatal(err)
+	}
 }
