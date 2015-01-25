@@ -226,8 +226,8 @@ func main() {
 	}
 
 	// initialize session
-	name := "ms"
-	peers := []peer.ID{"QmdXyf53G1b6xesETxsD2qCySRXcwn9znuG7RxmuYtZaCx"}
+	name := os.Args[1]
+	peers := []peer.ID{peer.ID(os.Args[2])}
 	session, err := InitSession(node, name, peers)
 	if err != nil {
 		log.Fatal(err)
