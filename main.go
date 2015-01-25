@@ -168,6 +168,7 @@ func mergedStream(session *Session) (*Stream, error) {
 	for _, subscribeId := range session.SubscribeIds {
 		wg.Add(1)
 		go func(subscribeId ChatId) {
+			defer wg.Done()
 			log.Print("GetValue on ", string(u.Key(subscribeId)))
 			value, err := dht.GetValue(context.Background(), u.Key(subscribeId))
 			if err != nil {
@@ -183,8 +184,6 @@ func mergedStream(session *Session) (*Stream, error) {
 			}
 
 			streamChanIn <- stream
-
-			wg.Done()
 		}(subscribeId)
 	}
 
